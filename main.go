@@ -3,6 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,5 +93,28 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(filepath)
+	xmlFile, err := os.Open(filepath)
+
+	if err != nil {
+		panic(err)
+	}
+
+	xmlDec := xml.NewDecoder(xmlFile)
+
+	for {
+		t, tokenErr := xmlDec.Token()
+		if tokenErr != nil {
+			if tokenErr == io.EOF {
+				break
+			} else {
+				panic(tokenErr.Error())
+			}
+		}
+		switch startElem := t.(type) {
+		case xml.StartElement:
+			fmt.Println(startElem)
+		case xml.EndElement:
+			continue
+		}
+	}
 }
