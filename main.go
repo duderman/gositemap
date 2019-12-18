@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const ATTRIBUTE_NAME = "xhtml:link"
+
 type ProviderSettings struct {
 	AttributesColumns string `json:"attributes_columns"`
 	Columns           string `json:"columns"`
@@ -24,6 +26,17 @@ type Payload struct {
 	ReporterName       string           `json:"reporter_name"`
 	StartDate          string           `json:"start_date"`
 	ProviderSettings   ProviderSettings `json:"provider_settings"`
+}
+
+type Link struct {
+	XMLName  xml.Name `xml:"link"`
+	HrefLang string   `xml:"hreflang,attr"`
+	Href     string   `xml:"href,attr"`
+}
+
+type Loc struct {
+	XMLName xml.Name `xml:"loc"`
+	Value   string   `xml:",chardata"`
 }
 
 func parsePayload() Payload {
@@ -112,7 +125,18 @@ func main() {
 		}
 		switch startElem := t.(type) {
 		case xml.StartElement:
-			fmt.Println(startElem)
+
+			switch startElem.Name.Local {
+			case "loc":
+				loc := &Loc{}
+				xmlDec.DecodeElement(loc, &startElem)
+				fmt.Println(loc.Value)
+			case "link":
+				link := &Link{}
+				xmlDec.DecodeElement(link, &startElem)
+				fmt.Println(link)
+			}
+
 		case xml.EndElement:
 			continue
 		}
