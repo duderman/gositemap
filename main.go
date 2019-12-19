@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const ATTRIBUTE_NAME = "xhtml:link"
-
 type ProviderSettings struct {
 	AttributesColumns string `json:"attributes_columns"`
 	Columns           string `json:"columns"`
@@ -29,14 +27,14 @@ type Payload struct {
 }
 
 type Link struct {
-	XMLName  xml.Name `xml:"link"`
-	HrefLang string   `xml:"hreflang,attr"`
-	Href     string   `xml:"href,attr"`
+	XMLName xml.Name `xml:"link"`
+	Lang    string   `xml:"hreflang,attr"`
+	Href    string   `xml:"href,attr"`
 }
 
-type Loc struct {
-	XMLName xml.Name `xml:"loc"`
-	Value   string   `xml:",chardata"`
+type URL struct {
+	Loc   string `xml:"loc"`
+	Links []Link `xml:"link"`
 }
 
 func parsePayload() Payload {
@@ -57,41 +55,23 @@ func newHTTPClient() *http.Client {
 	return &http.Client{Transport: tr}
 }
 
-func downloadFile(url string) (filepath string, err error) {
+func openSitemap(url string) (reader io.ReadCloser, err error) {
 	// Get the data
 	client := newHTTPClient()
 	resp, err := client.Get(url)
 	if err != nil {
-		return filepath, err
+		return reader, err
 	}
-	defer resp.Body.Close()
 
 	// Support compression
-	var reader io.ReadCloser
 	switch resp.Header.Get("Content-Encoding") {
-	case "x-gzip":
+	case "x-gzip", "gzip":
 		reader, err = gzip.NewReader(resp.Body)
-		defer reader.Close()
 	default:
 		reader = resp.Body
 	}
 
-	// Create the file
-	filepath = tmpFilename()
-
-	out, err := os.Create(filepath)
-	if err != nil {
-		return filepath, err
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, reader)
-	if err != nil {
-		return filepath, err
-	}
-
-	return filepath, nil
+	return reader, err
 }
 
 func main() {
@@ -100,19 +80,14 @@ func main() {
 	payload := parsePayload()
 
 	url := payload.ProviderSettings.URL
-	filepath, err := downloadFile(url)
+	reader, err := openSitemap(url)
+	defer reader.Close()
 
 	if err != nil {
 		panic(err)
 	}
 
-	xmlFile, err := os.Open(filepath)
-
-	if err != nil {
-		panic(err)
-	}
-
-	xmlDec := xml.NewDecoder(xmlFile)
+	xmlDec := xml.NewDecoder(reader)
 
 	for {
 		t, tokenErr := xmlDec.Token()
@@ -125,20 +100,22 @@ func main() {
 		}
 		switch startElem := t.(type) {
 		case xml.StartElement:
+			if startElem.Name.Local != "url" {
+				continue
+			}
 
-			switch startElem.Name.Local {
-			case "loc":
-				loc := &Loc{}
-				xmlDec.DecodeElement(loc, &startElem)
-				fmt.Println(loc.Value)
-			case "link":
-				link := &Link{}
-				xmlDec.DecodeElement(link, &startElem)
-				fmt.Println(link)
+			url := &URL{}
+
+			err := xmlDec.DecodeElement(url, &startElem)
+
+			if err != nil {
+				panic(err)
 			}
 
 		case xml.EndElement:
 			continue
 		}
 	}
+
+	fmt.Println("Done")
 }
