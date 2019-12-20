@@ -38,6 +38,18 @@ type URL struct {
 	Links []Link `xml:"link"`
 }
 
+func (url URL) toTSV() [][]string {
+	var link Link
+	result := make([][]string, len(url.Links))
+
+	for index := 0; index < len(url.Links); index++ {
+		link = url.Links[index]
+		result[index] = []string{url.Loc, link.Href, link.Lang, "asdadas"}
+	}
+
+	return result
+}
+
 func parsePayload() Payload {
 	spayload := os.Getenv("PAYLOAD")
 	var payload Payload
@@ -75,7 +87,7 @@ func openSitemap(url string) (reader io.ReadCloser, err error) {
 	return reader, err
 }
 
-func parseXML(reader io.ReadCloser) (err error) {
+func parseXML(reader io.ReadCloser, tsv *csv.Writer) (err error) {
 	xmlDec := xml.NewDecoder(reader)
 
 	for {
@@ -97,6 +109,10 @@ func parseXML(reader io.ReadCloser) (err error) {
 
 			err = xmlDec.DecodeElement(url, &startElem)
 
+			fmt.Println(url.toTSV())
+
+			tsv.WriteAll(url.toTSV())
+
 			if err != nil {
 				return err
 			}
@@ -107,6 +123,13 @@ func parseXML(reader io.ReadCloser) (err error) {
 	}
 
 	return nil
+}
+
+func openTSV(tsvFile *os.File) *csv.Writer {
+	tsvOut := csv.NewWriter(tsvFile)
+	tsvOut.Comma = '\t'
+
+	return tsvOut
 }
 
 func main() {
@@ -124,26 +147,20 @@ func main() {
 		panic(err)
 	}
 
-	err = parseXML(reader)
-
+	tsvFile, err := os.Create("out.tsv")
 	if err != nil {
 		panic(err)
 	}
-
-	tsvFile, err := os.Create("out.tsv")
 	defer tsvFile.Close()
 
+	tsv := openTSV(tsvFile)
+	defer tsv.Flush()
+
+	err = parseXML(reader, tsv)
+
 	if err != nil {
 		panic(err)
 	}
-
-	tsvOut := csv.NewWriter(tsvFile)
-	tsvOut.Comma = '\t'
-	defer tsvOut.Flush()
-
-	tsvOut.Write([]string{"zalupa", "konya"})
-	tsvOut.Write([]string{"ad", "pizdy"})
-	tsvOut.Write([]string{"1"})
 
 	fmt.Println("Done")
 }
