@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -128,6 +129,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	tsvFile, err := os.Create("out.tsv")
+	defer tsvFile.Close()
+
+	if err != nil {
+		panic(err)
+	}
+
+	tsvOut := csv.NewWriter(tsvFile)
+	tsvOut.Comma = '\t'
+	defer tsvOut.Flush()
+
+	tsvOut.Write([]string{"zalupa", "konya"})
+	tsvOut.Write([]string{"ad", "pizdy"})
+	tsvOut.Write([]string{"1"})
 
 	fmt.Println("Done")
 }
