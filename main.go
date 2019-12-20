@@ -74,8 +74,44 @@ func openSitemap(url string) (reader io.ReadCloser, err error) {
 	return reader, err
 }
 
+func parseXML(reader io.ReadCloser) (err error) {
+	xmlDec := xml.NewDecoder(reader)
+
+	for {
+		t, tokenErr := xmlDec.Token()
+		if tokenErr != nil {
+			if tokenErr == io.EOF {
+				break
+			} else {
+				return tokenErr
+			}
+		}
+		switch startElem := t.(type) {
+		case xml.StartElement:
+			if startElem.Name.Local != "url" {
+				continue
+			}
+
+			url := &URL{}
+
+			err = xmlDec.DecodeElement(url, &startElem)
+
+			if err != nil {
+				return err
+			}
+
+		case xml.EndElement:
+			continue
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	os.Setenv("PAYLOAD", "{\"warehouse_locations\":[\"s3-hive-ireland\"],\"client_name\":\"tommy_hilfiger_pvh\",\"account_name\":\"tommy_hilfiger_gb_en\",\"report_name\":\"xml\",\"start_date\":\"2019-04-15\",\"provider_settings\":{\"url\":\"https://uk.tommy.com/sitemap_1_Home_en_GB.xml\",\"attributes_columns\":\"href,hreflang\",\"columns\":\"loc, xhtml:link, url\"}}")
+
+	var err error
 
 	payload := parsePayload()
 
@@ -87,34 +123,10 @@ func main() {
 		panic(err)
 	}
 
-	xmlDec := xml.NewDecoder(reader)
+	err = parseXML(reader)
 
-	for {
-		t, tokenErr := xmlDec.Token()
-		if tokenErr != nil {
-			if tokenErr == io.EOF {
-				break
-			} else {
-				panic(tokenErr.Error())
-			}
-		}
-		switch startElem := t.(type) {
-		case xml.StartElement:
-			if startElem.Name.Local != "url" {
-				continue
-			}
-
-			url := &URL{}
-
-			err := xmlDec.DecodeElement(url, &startElem)
-
-			if err != nil {
-				panic(err)
-			}
-
-		case xml.EndElement:
-			continue
-		}
+	if err != nil {
+		panic(err)
 	}
 
 	fmt.Println("Done")
