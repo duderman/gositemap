@@ -87,7 +87,9 @@ func openSitemap(url string) (reader io.ReadCloser, err error) {
 	return reader, err
 }
 
-func parseXML(reader io.ReadCloser, tsv *csv.Writer) (err error) {
+func parseXML(reader io.ReadCloser, out chan *URL) (err error) {
+	defer close(out)
+
 	xmlDec := xml.NewDecoder(reader)
 
 	for {
@@ -106,17 +108,13 @@ func parseXML(reader io.ReadCloser, tsv *csv.Writer) (err error) {
 			}
 
 			url := &URL{}
-
 			err = xmlDec.DecodeElement(url, &startElem)
-
-			fmt.Println(url.toTSV())
-
-			tsv.WriteAll(url.toTSV())
 
 			if err != nil {
 				return err
 			}
 
+			out <- url
 		case xml.EndElement:
 			continue
 		}
@@ -132,8 +130,25 @@ func openTSV(tsvFile *os.File) *csv.Writer {
 	return tsvOut
 }
 
+func writeToTSV(in chan *URL, finished chan bool) {
+	tsvFile, err := os.Create("out.tsv")
+	if err != nil {
+		panic(err)
+	}
+	defer tsvFile.Close()
+
+	tsv := openTSV(tsvFile)
+	defer tsv.Flush()
+
+	for url := range in {
+		tsv.WriteAll(url.toTSV())
+	}
+
+	finished <- true
+}
+
 func main() {
-	os.Setenv("PAYLOAD", "{\"warehouse_locations\":[\"s3-hive-ireland\"],\"client_name\":\"tommy_hilfiger_pvh\",\"account_name\":\"tommy_hilfiger_gb_en\",\"report_name\":\"xml\",\"start_date\":\"2019-04-15\",\"provider_settings\":{\"url\":\"https://uk.tommy.com/sitemap_1_Home_en_GB.xml\",\"attributes_columns\":\"href,hreflang\",\"columns\":\"loc, xhtml:link, url\"}}")
+	os.Setenv("PAYLOAD", "{\"warehouse_locations\":[\"s3-hive-ireland\"],\"client_name\":\"tommy_hilfiger_pvh\",\"account_name\":\"tommy_hilfiger_gb_en\",\"report_name\":\"xml\",\"start_date\":\"2019-04-15\",\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\",\"attributes_columns\":\"href,hreflang\",\"columns\":\"loc, xhtml:link, url\"}}")
 
 	var err error
 
@@ -147,20 +162,13 @@ func main() {
 		panic(err)
 	}
 
-	tsvFile, err := os.Create("out.tsv")
-	if err != nil {
-		panic(err)
-	}
-	defer tsvFile.Close()
+	urlsChan := make(chan *URL)
+	finishedChan := make(chan bool)
 
-	tsv := openTSV(tsvFile)
-	defer tsv.Flush()
+	go parseXML(reader, urlsChan)
+	go writeToTSV(urlsChan, finishedChan)
 
-	err = parseXML(reader, tsv)
-
-	if err != nil {
-		panic(err)
-	}
+	<-finishedChan
 
 	fmt.Println("Done")
 }
