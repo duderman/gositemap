@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/csv"
 	"encoding/json"
@@ -9,7 +10,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type ProviderSettings struct {
@@ -38,6 +43,12 @@ type URL struct {
 	Links []Link `xml:"link"`
 }
 
+const (
+	S3_REGION    = "us-east-1"
+	S3_BUCKET    = "sitemap-test"
+	AWS_ENDPOINT = "http://127.0.0.1:9000/"
+)
+
 func (url URL) toTSV() [][]string {
 	var link Link
 	result := make([][]string, len(url.Links))
@@ -57,19 +68,12 @@ func parsePayload() Payload {
 	return payload
 }
 
-func tmpFilename() string {
-	now := time.Now().Unix()
-
-	return fmt.Sprintf("sitemap%d.xml", now)
-}
-
 func newHTTPClient() *http.Client {
 	tr := &http.Transport{DisableCompression: true}
 	return &http.Client{Transport: tr}
 }
 
 func openSitemap(url string) (reader io.ReadCloser, err error) {
-	// Get the data
 	client := newHTTPClient()
 	resp, err := client.Get(url)
 	if err != nil {
@@ -89,6 +93,8 @@ func openSitemap(url string) (reader io.ReadCloser, err error) {
 
 func parseXML(reader io.ReadCloser, out chan *URL) (err error) {
 	defer close(out)
+
+	fmt.Println("Parsing XML")
 
 	xmlDec := xml.NewDecoder(reader)
 
@@ -120,6 +126,8 @@ func parseXML(reader io.ReadCloser, out chan *URL) (err error) {
 		}
 	}
 
+	fmt.Println("Finished parsing")
+
 	return nil
 }
 
@@ -130,8 +138,9 @@ func openTSV(tsvFile *os.File) *csv.Writer {
 	return tsvOut
 }
 
-func writeToTSV(in chan *URL, finished chan bool) {
-	tsvFile, err := os.Create("out.tsv")
+func writeToTSV(in chan *URL, finished chan string) {
+	filename := "out.tsv"
+	tsvFile, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +153,53 @@ func writeToTSV(in chan *URL, finished chan bool) {
 		tsv.WriteAll(url.toTSV())
 	}
 
-	finished <- true
+	fmt.Println("Finished output")
+	finished <- filename
+}
+
+func newAWSConfig() *aws.Config {
+	return &aws.Config{
+		Region:           aws.String(S3_REGION),
+		Endpoint:         aws.String(AWS_ENDPOINT),
+		Credentials:      credentials.NewSharedCredentials("", "minio"),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+	}
+}
+
+func uploadToS3(filename string) error {
+	fmt.Println("Uploading to S3")
+	config := newAWSConfig()
+	sess, err := session.NewSession(config)
+
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Open(filename)
+
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	size := fileInfo.Size()
+	buffer := make([]byte, size)
+	file.Read(buffer)
+
+	fmt.Println("Collected all the info. Starting upload")
+	_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
+		Bucket:             aws.String(S3_BUCKET),
+		Key:                aws.String(filename),
+		ACL:                aws.String("private"),
+		Body:               bytes.NewReader(buffer),
+		ContentLength:      aws.Int64(size),
+		ContentType:        aws.String(http.DetectContentType(buffer)),
+		ContentDisposition: aws.String("attachment"),
+	})
+
+	return err
 }
 
 func main() {
@@ -152,8 +207,10 @@ func main() {
 
 	var err error
 
+	fmt.Println("Parsing payload")
 	payload := parsePayload()
 
+	fmt.Println("Opening sitemap")
 	url := payload.ProviderSettings.URL
 	reader, err := openSitemap(url)
 	defer reader.Close()
@@ -163,12 +220,18 @@ func main() {
 	}
 
 	urlsChan := make(chan *URL)
-	finishedChan := make(chan bool)
+	finishedChan := make(chan string)
 
 	go parseXML(reader, urlsChan)
 	go writeToTSV(urlsChan, finishedChan)
 
-	<-finishedChan
+	filename := <-finishedChan
+
+	err = uploadToS3(filename)
+
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Done")
 }
