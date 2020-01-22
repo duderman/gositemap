@@ -49,13 +49,13 @@ const (
 	AWS_ENDPOINT = "http://127.0.0.1:9000/"
 )
 
-func (url URL) toTSV() [][]string {
+func (url URL) toTSV(sitemapURL string) [][]string {
 	var link Link
 	result := make([][]string, len(url.Links))
 
 	for index := 0; index < len(url.Links); index++ {
 		link = url.Links[index]
-		result[index] = []string{url.Loc, link.Href, link.Lang, "asdadas"}
+		result[index] = []string{url.Loc, link.Href, link.Lang, sitemapURL}
 	}
 
 	return result
@@ -138,7 +138,7 @@ func openTSV(tsvFile *os.File) *csv.Writer {
 	return tsvOut
 }
 
-func writeToTSV(in chan *URL, finished chan string) {
+func writeToTSV(in chan *URL, finished chan string, sitemapURL string) {
 	filename := "out.tsv"
 	tsvFile, err := os.Create(filename)
 	if err != nil {
@@ -150,7 +150,7 @@ func writeToTSV(in chan *URL, finished chan string) {
 	defer tsv.Flush()
 
 	for url := range in {
-		tsv.WriteAll(url.toTSV())
+		tsv.WriteAll(url.toTSV(sitemapURL))
 	}
 
 	fmt.Println("Finished output")
@@ -223,7 +223,7 @@ func main() {
 	finishedChan := make(chan string)
 
 	go parseXML(reader, urlsChan)
-	go writeToTSV(urlsChan, finishedChan)
+	go writeToTSV(urlsChan, finishedChan, url)
 
 	filename := <-finishedChan
 
