@@ -4,9 +4,9 @@ require 'nokogiri'
 require 'csv'
 require 'aws-sdk-s3'
 
-S3_REGION    = "us-east-1"
 S3_BUCKET    = "sitemap-test"
-AWS_ENDPOINT = "http://127.0.0.1:9000/"
+S3_REGION    = ENV['S3_REGION'] || "us-east-1"
+AWS_ENDPOINT = ENV['AWS_ENDPOINT'] || "http://127.0.0.1:9000/"
 
 ENV['PAYLOAD'] ||= "{\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\"}}"
 

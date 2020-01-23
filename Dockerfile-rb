@@ -1,32 +1,15 @@
 FROM ruby:2.5.7-alpine3.11 AS build
 
-WORKDIR /code
-
-RUN gem install nokogiri  && \
+RUN apk add --update --no-cache build-base && \
+    gem install nokogiri aws-sdk-s3 && \
     rm /usr/local/bundle/cache/*.gem
 
-FROM <%= @base_image_tag %>
+FROM ruby:2.5.7-alpine3.11
 
-LABEL org.forwardpmx.os="alpine" \
-      org.forwardpmx.os-version="<%= @os_version %>" \
-      org.forwardpmx.from.image="<%= @base_image_tag.split(':').first %>" \
-      org.forwardpmx.from.tag="<%= @base_image_tag.split(':').last %>" \
-      org.forwardpmx.lang.ruby.version="<%= @ruby_version %>"
-
-COPY --from=build /etc/apk/keys/developers@forward3d.com-5a7dfa17.rsa.pub /etc/apk/keys/developers@forward3d.com-5a7dfa17.rsa.pub
-COPY --from=build /etc/apk/repositories /etc/apk/repositories
-
-<%= @extra_runtime_packages %>
-
-RUN apk add --no-cache --update openssl-dev && \
-    gem install -N bundler -v 2.0.1
-
-WORKDIR /code
-COPY . /code
 COPY --from=build /usr/local/bundle /usr/local/bundle
 
-<%= @context_steps %>
+WORKDIR /code
 
-<%= @post_install_steps %>
+COPY main.rb /code/main.rb
 
-<%= @entry_point_or_cmd %>
+CMD ruby main.rb
