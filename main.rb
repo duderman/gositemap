@@ -56,7 +56,6 @@ def upload_to_s3(tsv_path)
   s3 = Aws::S3::Client.new(
     region: S3_REGION,
     endpoint: AWS_ENDPOINT,
-    credentials: Aws::SharedCredentials.new(profile_name: 'minio'),
     force_path_style: true
   )
 

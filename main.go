@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -154,7 +153,6 @@ func newAWSConfig() *aws.Config {
 	return &aws.Config{
 		Region:           aws.String(S3_REGION),
 		Endpoint:         aws.String(AWS_ENDPOINT),
-		Credentials:      credentials.NewSharedCredentials("", "minio"),
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 	}
