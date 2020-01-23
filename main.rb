@@ -3,6 +3,7 @@ require 'open-uri'
 require 'nokogiri'
 require 'csv'
 require 'aws-sdk-s3'
+require 'time'
 
 S3_BUCKET    = "sitemap-test"
 S3_REGION    = ENV['S3_REGION'] || "us-east-1"
@@ -66,7 +67,7 @@ def upload_to_s3(tsv_path)
   )
 end
 
-
+startTime = Time.now
 payload = parse_payload
 url = payload['provider_settings']['url']
 sitemap = download_sitemap(url)
@@ -75,3 +76,4 @@ tsv_path = write_to_tsv(parsed_xml, url)
 upload_to_s3(tsv_path)
 
 puts 'DONE'
+puts "It took: #{Time.now - startTime}"

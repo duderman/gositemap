@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -204,6 +205,8 @@ func uploadToS3(filename string) error {
 }
 
 func main() {
+	fmt.Println("Starting")
+	startTime := time.Now()
 	os.Setenv("PAYLOAD", "{\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\"}}")
 
 	var err error
@@ -235,4 +238,5 @@ func main() {
 	}
 
 	fmt.Println("Done")
+	fmt.Println("It took: ", time.Since(startTime).Milliseconds())
 }
