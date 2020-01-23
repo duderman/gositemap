@@ -3,7 +3,6 @@ require 'open-uri'
 require 'nokogiri'
 require 'csv'
 require 'aws-sdk-s3'
-require 'ruby-progressbar'
 
 S3_REGION    = "us-east-1"
 S3_BUCKET    = "sitemap-test"
@@ -25,10 +24,7 @@ def parse_sitemap(sitemap)
   puts 'Parsing XML'
   doc = Nokogiri::XML(sitemap)
   doc.root.add_namespace('xhtml', 'http://www.w3.org/1999/xhtml')
-  urls = doc.css('url')
-  progressbar = ProgressBar.create(total: urls.size)
-  urls.map do |url|
-    progressbar.increment
+  doc.css('url').map do |url|
     {
       'loc' => url.at_css('loc').inner_html,
       'links' => url.css("*[rel='alternate']").map do |link|
