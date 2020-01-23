@@ -18,18 +18,11 @@ import (
 )
 
 type ProviderSettings struct {
-	AttributesColumns string `json:"attributes_columns"`
-	Columns           string `json:"columns"`
-	URL               string `json:"url"`
+	URL string `json:"url"`
 }
 
 type Payload struct {
-	WarehouseLocations []string         `json:"warehouse_locations"`
-	ClientName         string           `json:"client_name"`
-	AccountName        string           `json:"account_name"`
-	ReporterName       string           `json:"reporter_name"`
-	StartDate          string           `json:"start_date"`
-	ProviderSettings   ProviderSettings `json:"provider_settings"`
+	ProviderSettings ProviderSettings `json:"provider_settings"`
 }
 
 type Link struct {
@@ -203,7 +196,7 @@ func uploadToS3(filename string) error {
 }
 
 func main() {
-	os.Setenv("PAYLOAD", "{\"warehouse_locations\":[\"s3-hive-ireland\"],\"client_name\":\"tommy_hilfiger_pvh\",\"account_name\":\"tommy_hilfiger_gb_en\",\"report_name\":\"xml\",\"start_date\":\"2019-04-15\",\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\",\"attributes_columns\":\"href,hreflang\",\"columns\":\"loc, xhtml:link, url\"}}")
+	os.Setenv("PAYLOAD", "{\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\"}}")
 
 	var err error
 

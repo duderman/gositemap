@@ -9,7 +9,7 @@ S3_REGION    = "us-east-1"
 S3_BUCKET    = "sitemap-test"
 AWS_ENDPOINT = "http://127.0.0.1:9000/"
 
-ENV['PAYLOAD'] = "{\"warehouse_locations\":[\"s3-hive-ireland\"],\"client_name\":\"tommy_hilfiger_pvh\",\"account_name\":\"tommy_hilfiger_gb_en\",\"report_name\":\"xml\",\"start_date\":\"2019-04-15\",\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\",\"attributes_columns\":\"href,hreflang\",\"columns\":\"loc, xhtml:link, url\"}}"
+ENV['PAYLOAD'] ||= "{\"provider_settings\":{\"url\":\"https://www.ferragamo.com/sfsm/sitemap_33751.xml.gz\"}}"
 
 def parse_payload
   puts 'Parsing payload'
