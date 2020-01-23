@@ -41,6 +41,16 @@ const (
 	AWS_ENDPOINT = "http://127.0.0.1:9000/"
 )
 
+func awsEndpoint() string {
+	envValue := os.Getenv("AWS_ENDPOINT")
+
+	if len(envValue) > 0 {
+		return envValue
+	}
+
+	return AWS_ENDPOINT
+}
+
 func (url URL) toTSV(sitemapURL string) [][]string {
 	var link Link
 	result := make([][]string, len(url.Links))
@@ -152,7 +162,7 @@ func writeToTSV(in chan *URL, finished chan string, sitemapURL string) {
 func newAWSConfig() *aws.Config {
 	return &aws.Config{
 		Region:           aws.String(S3_REGION),
-		Endpoint:         aws.String(AWS_ENDPOINT),
+		Endpoint:         aws.String(awsEndpoint()),
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 	}

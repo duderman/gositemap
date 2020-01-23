@@ -1,0 +1,10 @@
+FROM golang:1.13-alpine3.11 AS build
+WORKDIR /code
+COPY main.go /code/main.go
+RUN apk add --update --no-cache git && \
+    go get -u github.com/aws/aws-sdk-go/service/s3 && \
+    go build main.go
+
+FROM golang:1.13-alpine3.11
+COPY --from=build /code/main main
+CMD ./main
