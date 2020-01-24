@@ -17,4 +17,8 @@ run-rb:
 
 run-minio:
 	docker network create $(network)
-	docker run -d --name minio -p 9000:9000 --network $(network) minio/minio server miniodata
+	docker run -d --rm --name minio -p 9000:9000 --network $(network) minio/minio server miniodata
+
+clean:
+	docker stop minio
+	docker network rm $(network)
