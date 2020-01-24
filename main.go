@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -204,6 +205,19 @@ func uploadToS3(filename string) error {
 	return err
 }
 
+func printMemoryUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("Memory usage: ")
+	fmt.Printf("Alloc = %v", bToKB(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v", bToKB(m.TotalAlloc))
+	fmt.Printf("\tSys = %v\n", bToKB(m.Sys))
+}
+
+func bToKB(size uint64) uint64 {
+	return size / 1024
+}
+
 func main() {
 	fmt.Println("Starting")
 	startTime := time.Now()
@@ -239,4 +253,5 @@ func main() {
 
 	fmt.Println("Done")
 	fmt.Println("It took: ", time.Since(startTime).Milliseconds())
+	printMemoryUsage()
 }

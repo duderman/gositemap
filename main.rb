@@ -77,3 +77,4 @@ upload_to_s3(tsv_path)
 
 puts 'DONE'
 puts "It took: #{Time.now - startTime}"
+puts "Memory usage: #{`ps -o rss= -p #{$$}`.to_i / 1024}"
